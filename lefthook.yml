@@ -1,0 +1,13 @@
+# lefthook.yml
+# Refer for explanation to following link:
+# https://lefthook.dev/configuration/
+
+pre-commit:
+  parallel: true
+  commands:
+    check:
+      glob: "*.{js,ts,jsx,tsx,json,jsonc}"
+      run: pnpm biome check --apply --staged --no-errors-on-unmatched
+    format:
+      glob: "*.{js,ts,jsx,tsx,json,jsonc}"
+      run: pnpm biome format --write --staged --no-errors-on-unmatched
