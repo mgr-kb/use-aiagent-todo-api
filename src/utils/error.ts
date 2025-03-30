@@ -1,6 +1,3 @@
-// src/errors/httpErrors.ts
-
-// Base class for custom HTTP errors
 export class HttpError extends Error {
 	readonly status: number;
 	readonly code?: string; // Optional application-specific error code

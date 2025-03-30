@@ -1,28 +1,11 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger"; // Import logger middleware
-import tasks from "./routes/tasks"; // Value import needed for app.route
-import users from "./routes/users"; // Value import needed for app.route
+import tasksRouter from "./routes/tasks"; // Value import needed for app.route
+import usersRouter from "./routes/users"; // Value import needed for app.route
 import { authMiddleware } from "./middleware/auth"; // Placeholder for auth middleware
-import type { verify } from "hono/jwt";
-import { HttpError, InternalServerError } from "./errors/httpErrors"; // Import custom errors
+import { HttpError, InternalServerError } from "./utils/error"; // Import custom errors
 import type { StatusCode } from "hono/utils/http-status"; // Import StatusCode type
-
-// Define and export the environment type
-export type AppEnv = {
-	Variables: {
-		userId: string;
-		jwtPayload?: Awaited<ReturnType<typeof verify>>;
-	};
-	Bindings: {
-		// Define expected environment variables/secrets
-		SUPABASE_URL: string;
-		SUPABASE_ANON_KEY: string;
-		JWT_SECRET: string;
-		LOCAL_TEST_USER_MAIL: string;
-		LOCAL_TEST_USER_PW: string;
-		STAGE: string;
-	};
-};
+import type { AppEnv } from "./types/hono";
 
 const app = new Hono<AppEnv>().basePath("/api"); // Apply the Env type
 
@@ -33,8 +16,8 @@ app.use("*", logger());
 app.use("*", authMiddleware);
 
 // Route definitions
-app.route("/tasks", tasks);
-app.route("/users", users);
+app.route("/tasks", tasksRouter);
+app.route("/users", usersRouter);
 
 // Health check or root endpoint (optional, outside /api)
 // Example: app.get('/', (c) => c.text('API is running'));
@@ -49,17 +32,13 @@ app.onError((err, c) => {
 		// Use the custom error directly
 		errorResponse = err;
 	} else {
-		// Wrap unexpected errors in InternalServerError
-		// Avoid leaking internal details in production
+		// Access STAGE env var safely
+		const stage = c.env.STAGE || "production"; // Default to production if not set
 		const message =
-			c.env.STAGE === "local" && err instanceof Error
+			stage === "local" && err instanceof Error
 				? err.message
 				: "Internal Server Error";
 		errorResponse = new InternalServerError(message);
-		// Optionally include original error type in local dev for debugging
-		// if (c.env.STAGE === 'local' && err instanceof Error) {
-		//    console.error('Original error type:', err.constructor.name);
-		// }
 	}
 
 	// Set status code explicitly on the response object

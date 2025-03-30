@@ -5,8 +5,7 @@ src/
 ├── middleware/                # ミドルウェア
 │   ├── auth.ts                # Supabase JWT検証
 │   └── error.ts               # エラーハンドリング
-├── routes/                    # ルーティング
-├── controllers/               # コントローラー
+├── routes/                    # ルーティング/コントローラー
 ├── services/                  # サービス（ビジネスロジック）
 ├── models/                    # データモデル
 └── utils/                     # ユーティリティ

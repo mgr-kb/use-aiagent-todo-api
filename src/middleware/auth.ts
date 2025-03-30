@@ -1,8 +1,8 @@
 import { createMiddleware } from "hono/factory";
 import { verify } from "hono/jwt"; // Import verify function
 import { getLocalToken } from "../mocks/getToken";
-import type { AppEnv } from "../index";
-import { UnauthorizedError, InternalServerError } from "../errors/httpErrors"; // Import custom errors
+import type { AppEnv } from "../types/hono";
+import { UnauthorizedError, InternalServerError } from "../utils/error"; // Import custom errors
 
 export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 	const authHeader = c.req.header("Authorization");
