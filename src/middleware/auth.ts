@@ -1,23 +1,9 @@
 import { createMiddleware } from "hono/factory";
 import { verify } from "hono/jwt"; // Import verify function
-import { getToken } from "../mocks/getToken";
+import { getLocalToken } from "../mocks/getToken";
+import type { AppEnv } from "../index";
 
-// Define types for context variables set by this middleware
-// This helps with type inference in subsequent handlers
-type AuthEnv = {
-	Variables: {
-		userId: string;
-		jwtPayload?: Awaited<ReturnType<typeof verify>>; // Use the return type of verify
-		// Add other auth-related variables if needed, e.g., user roles
-	};
-	Bindings: {
-		// Access environment variables/secrets
-		JWT_SECRET: string;
-		// Add other bindings if needed (SUPABASE_URL, SUPABASE_ANON_KEY are already in AppEnv)
-	};
-};
-
-export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
+export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 	const authHeader = c.req.header("Authorization");
 	const jwtSecret = c.env.JWT_SECRET;
 
@@ -33,16 +19,13 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 		return c.json({ error: "Unauthorized - Missing or invalid token" }, 401);
 	}
 
-	const token = authHeader.substring(7); // Remove "Bearer " prefix
-
 	// FIXME: ローカル限定
-	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-	const localToken = (await getToken(c as any)) || "";
+	const token =
+		c.env.STAGE === "local" ? await getLocalToken(c) : authHeader.substring(7);
 
 	try {
 		// Verify the token using the secret
-		// const payload = await verify(token, jwtSecret);
-		const payload = await verify(localToken, jwtSecret);
+		const payload = await verify(token, jwtSecret);
 
 		// Ensure payload.sub exists and is a string before setting
 		const userId = payload?.sub; // Use optional chaining

@@ -2,11 +2,13 @@ import { Hono } from "hono";
 import tasks from "./routes/tasks"; // Value import needed for app.route
 import users from "./routes/users"; // Value import needed for app.route
 import { authMiddleware } from "./middleware/auth"; // Placeholder for auth middleware
+import type { verify } from "hono/jwt";
 
 // Define and export the environment type
 export type AppEnv = {
 	Variables: {
 		userId: string;
+		jwtPayload?: Awaited<ReturnType<typeof verify>>;
 	};
 	Bindings: {
 		// Define expected environment variables/secrets
@@ -15,6 +17,7 @@ export type AppEnv = {
 		JWT_SECRET: string;
 		LOCAL_TEST_USER_MAIL: string;
 		LOCAL_TEST_USER_PW: string;
+		STAGE: string;
 	};
 };
 

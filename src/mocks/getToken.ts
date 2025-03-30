@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { AppEnv } from "../index"; // Import shared Env type
 import type { Context as HonoContext } from "hono";
 
-export async function getToken(c: HonoContext<AppEnv>) {
+export async function getLocalToken(c: HonoContext<AppEnv>) {
 	const supabaseUrl = c.env.SUPABASE_URL;
 	const supabaseAnonKey = c.env.SUPABASE_ANON_KEY;
 	const localTestUserMail = c.env.LOCAL_TEST_USER_MAIL;
@@ -32,8 +32,7 @@ export async function getToken(c: HonoContext<AppEnv>) {
 		});
 
 		if (error) {
-			console.error("Sign-in error:", error.message);
-			return;
+			throw new Error(`Sign-in error: ${error.message}`);
 		}
 
 		if (data?.session?.access_token) {
@@ -43,8 +42,9 @@ export async function getToken(c: HonoContext<AppEnv>) {
 			// console.log('Token Payload (Decoded):', payload);
 			// console.log('User ID (sub):', payload.sub);
 		}
-		console.error("Sign-in succeeded but no session/token found.");
+		throw new Error("Sign-in succeeded but no session/token found.");
 	} catch (e) {
 		console.error("An unexpected error occurred:", e);
+		throw e;
 	}
 }
