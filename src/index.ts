@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { logger } from "hono/logger"; // Import logger middleware
 import tasks from "./routes/tasks"; // Value import needed for app.route
 import users from "./routes/users"; // Value import needed for app.route
 import { authMiddleware } from "./middleware/auth"; // Placeholder for auth middleware
@@ -23,8 +24,10 @@ export type AppEnv = {
 
 const app = new Hono<AppEnv>().basePath("/api"); // Apply the Env type
 
-// Apply auth middleware to protected routes (example: all routes under /api for now)
-// Specific routes might need fine-grained control later
+// Apply logger middleware FIRST
+app.use("*", logger());
+
+// Apply auth middleware AFTER logger (so logger sees the request before auth potentially stops it)
 app.use("*", authMiddleware);
 
 // Route definitions

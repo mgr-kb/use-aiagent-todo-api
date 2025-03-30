@@ -38,8 +38,6 @@ export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 			);
 		}
 
-		console.log("User authenticated.");
-
 		// Set userId and optionally the full payload in context
 		c.set("userId", userId);
 		// c.set('jwtPayload', payload); // Uncomment if you need the full payload later
