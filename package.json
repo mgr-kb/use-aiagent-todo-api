@@ -2,14 +2,19 @@
 	"name": "use-aiagent-todo-api",
 	"type": "module",
 	"scripts": {
-		"dev": "vite",
-		"preview": "wrangler dev",
+		"dev": "wrangler dev --local --persist",
 		"deploy": "wrangler deploy",
-		"lint": "biome check ./src",
-		"format": "biome format --write ./src"
+		"lint": "biome lint ./src",
+		"format": "biome format ./src",
+		"format:fix": "biome format --write ./src",
+		"check": "biome check ./src",
+		"check:fix": "biome check --write ./src"
 	},
 	"dependencies": {
-		"hono": "^4.7.5"
+		"@hono/zod-validator": "^0.4.3",
+		"@supabase/supabase-js": "^2.49.3",
+		"hono": "^4.7.5",
+		"zod": "^3.24.2"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",

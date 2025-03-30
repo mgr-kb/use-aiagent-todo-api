@@ -1,34 +1,42 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "use-aiagent-todo-api",
-  "compatibility_date": "2024-04-01",
-  "main": "./src/index.tsx",
-  "assets": {
-    "directory": "./public"
-  }
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
-  // "kv_namespaces": [
-  //   {
-  //     "binding": "MY_KV_NAMESPACE",
-  //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  //   }
-  // ],
-  // "r2_buckets": [
-  //   {
-  //     "binding": "MY_BUCKET",
-  //     "bucket_name": "my-bucket"
-  //   }
-  // ],
-  // "d1_databases": [
-  //   {
-  //     "binding": "MY_DB",
-  //     "database_name": "my-database",
-  //     "database_id": ""
-  //   }
-  // ],
-  // "ai": {
-  //   "binding": "AI"
-  // }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "use-aiagent-todo-api",
+	"compatibility_date": "2024-04-01",
+	"main": "./src/index.ts",
+	"assets": {
+		"directory": "./public"
+	},
+	"vars": {
+		// These will be overridden by secrets in production
+		// Add placeholders or default dev values here if needed
+		"SUPABASE_URL": "YOUR_SUPABASE_URL_HERE",
+		"SUPABASE_ANON_KEY": "YOUR_SUPABASE_ANON_KEY_HERE"
+		// JWT_SECRET should ideally only be set via `wrangler secret put JWT_SECRET`
+		// "JWT_SECRET": "YOUR_DEV_JWT_SECRET_HERE" // Avoid committing real secrets
+	}
+	// "vars": {
+	//   "MY_VAR": "my-variable"
+	// },
+	// "kv_namespaces": [
+	//   {
+	//     "binding": "MY_KV_NAMESPACE",
+	//     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	//   }
+	// ],
+	// "r2_buckets": [
+	//   {
+	//     "binding": "MY_BUCKET",
+	//     "bucket_name": "my-bucket"
+	//   }
+	// ],
+	// "d1_databases": [
+	//   {
+	//     "binding": "MY_DB",
+	//     "database_name": "my-database",
+	//     "database_id": ""
+	//   }
+	// ],
+	// "ai": {
+	//   "binding": "AI"
+	// }
 }
