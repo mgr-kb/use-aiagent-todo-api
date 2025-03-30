@@ -3,7 +3,7 @@ import type { Profile } from "../types";
 // Mock database/service calls for users
 // Provide a complete initial Profile mock, matching the type
 export const mockUserProfile: Profile = {
-	id: "mock-user-id",
+	id: "9316e824-ba86-47f3-bd58-cbe2b666c842",
 	email: "user@example.com",
 	name: "Mock User",
 	avatar_url: null,

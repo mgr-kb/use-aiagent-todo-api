@@ -2,7 +2,7 @@
 	"name": "use-aiagent-todo-api",
 	"type": "module",
 	"scripts": {
-		"dev": "wrangler dev --local --persist",
+		"dev": "wrangler dev",
 		"deploy": "wrangler deploy",
 		"lint": "biome lint ./src",
 		"format": "biome format ./src",

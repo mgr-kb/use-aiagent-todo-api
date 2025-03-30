@@ -13,6 +13,8 @@ export type AppEnv = {
 		SUPABASE_URL: string;
 		SUPABASE_ANON_KEY: string;
 		JWT_SECRET: string;
+		LOCAL_TEST_USER_MAIL: string;
+		LOCAL_TEST_USER_PW: string;
 	};
 };
 

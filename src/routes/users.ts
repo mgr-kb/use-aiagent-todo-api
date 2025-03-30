@@ -3,7 +3,7 @@ import type { AppEnv } from "../index"; // Use import type for types
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import type { Profile, ProfileUpdate } from "../types"; // Import profile types
-import { mockUserProfile } from "../mocks/users"; // Import mock data
+import { getSupabaseClient } from "../db/client"; // Import Supabase client helper
 
 const profileSchema = z.object({
 	id: z.string().uuid(),
@@ -19,16 +19,40 @@ const users = new Hono<AppEnv>();
 // Middleware specific to user routes (if needed, e.g., ensuring user ID matches param)
 
 // GET /api/users/me - 現在のユーザー情報取得
-users.get("/me", (c) => {
-	const userId = c.get("userId"); // Assume userId is set by auth middleware
-	// TODO: Implement Supabase fetch logic for profile based on auth.uid()
-	if (userId === mockUserProfile.id) {
-		return c.json<Profile>(mockUserProfile);
+users.get("/me", async (c) => {
+	const userId = c.get("userId");
+	const supabase = getSupabaseClient(c);
+
+	// Fetch the profile from the 'profiles' table using the authenticated user ID
+	const { data, error } = await supabase
+		.from("profiles")
+		.select("*")
+		.eq("id", userId) // 'id' in profiles table should match auth.users.id
+		.single();
+
+	if (error) {
+		// Differentiate between profile not found (might be first login) and other errors
+		if (error.code === "PGRST116") {
+			console.log(
+				`Profile not found for user ${userId}, might be first login.`,
+			);
+			// Optional: Consider creating a profile entry here if it doesn't exist
+			// Or return a specific status/message indicating profile needs creation/setup
+			return c.notFound(); // Or return a default/empty profile shape
+		}
+		console.error("Error fetching user profile:", error);
+		return c.json(
+			{ error: "Failed to fetch user profile", details: error.message },
+			500,
+		);
 	}
-	// If not the mock user, simulate fetching (return a differently typed object or error)
-	// For now, return a placeholder or 404, as we only have one mock user
-	// return c.json<Profile>({ id: userId, email: 'fetched@example.com', name: 'Fetched User', created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
-	return c.notFound(); // Or return fetched profile if logic exists
+
+	if (!data) {
+		// This case might occur if RLS prevents access but no error is thrown
+		return c.notFound();
+	}
+
+	return c.json<Profile>(data);
 });
 
 // PUT /api/users/me - ユーザー情報更新
@@ -38,27 +62,47 @@ const profileUpdateSchema = profileSchema
 	.partial();
 users.put("/me", zValidator("json", profileUpdateSchema), async (c) => {
 	const userId = c.get("userId");
-	// Ensure validated data conforms to Partial<ProfileUpdate>
-	const updateData: Partial<ProfileUpdate> = c.req.valid("json");
-	// TODO: Implement Supabase update logic for profile where id = auth.uid()
-	console.log(`Updating profile for user ${userId} with data:`, updateData);
+	const validatedData: Partial<ProfileUpdate> = c.req.valid("json");
+	const supabase = getSupabaseClient(c);
 
-	// Ensure we only update the mock user if the ID matches
-	if (userId !== mockUserProfile.id) {
-		return c.json({ error: "Cannot update this profile" }, 403); // Forbidden
+	// Ensure updated_at is set automatically
+	const profileToUpdate = {
+		...validatedData,
+		updated_at: new Date().toISOString(),
+	};
+
+	// Update the profile in the 'profiles' table for the authenticated user
+	const { data, error } = await supabase
+		.from("profiles")
+		.update(profileToUpdate)
+		.eq("id", userId) // Update where id matches the authenticated user's ID
+		.select()
+		.single();
+
+	if (error) {
+		// Handle cases where the profile might not exist or RLS prevents update
+		if (error.code === "PGRST116") {
+			console.warn(
+				`Profile update failed for user ${userId}. Profile not found or permission denied.`,
+			);
+			return c.notFound(); // Or c.json({ error: 'Profile not found or update forbidden' }, 404)
+		}
+		console.error("Error updating user profile:", error);
+		return c.json(
+			{ error: "Failed to update user profile", details: error.message },
+			500,
+		);
 	}
 
-	// Update mock data (simple merge, ensure fields match Profile type)
-	const updatedProfile: Profile = {
-		...mockUserProfile, // Start with existing profile
-		...updateData, // Apply validated updates
-		id: userId, // Ensure ID remains the same
-		updated_at: new Date().toISOString(), // Update timestamp
-	};
-	// Update the mock object in memory
-	Object.assign(mockUserProfile, updatedProfile);
+	if (!data) {
+		// If RLS prevents update without error
+		console.warn(
+			`Profile update operation for user ${userId} returned no data, likely due to RLS.`,
+		);
+		return c.notFound();
+	}
 
-	return c.json<Profile>(updatedProfile); // Type the response
+	return c.json<Profile>(data);
 });
 
 export default users;
