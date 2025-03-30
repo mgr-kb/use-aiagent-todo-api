@@ -7,7 +7,7 @@ pre-commit:
   commands:
     check:
       glob: "*.{js,ts,jsx,tsx,json,jsonc}"
-      run: pnpm biome check --apply --staged --no-errors-on-unmatched
+      run: pnpm biome check --write --staged --no-errors-on-unmatched
     format:
       glob: "*.{js,ts,jsx,tsx,json,jsonc}"
       run: pnpm biome format --write --staged --no-errors-on-unmatched
