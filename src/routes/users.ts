@@ -4,6 +4,14 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import type { Profile, ProfileUpdate } from "../types"; // Import profile types
 import { getSupabaseClient } from "../db/client"; // Import Supabase client helper
+// Import custom errors and HttpError base class
+import {
+	HttpError,
+	NotFoundError,
+	DatabaseError,
+	InternalServerError,
+} from "../errors/httpErrors";
+import type { PostgrestError } from "@supabase/supabase-js"; // Import PostgrestError
 
 const profileSchema = z.object({
 	id: z.string().uuid(),
@@ -16,43 +24,50 @@ const profileSchema = z.object({
 
 const users = new Hono<AppEnv>();
 
-// Middleware specific to user routes (if needed, e.g., ensuring user ID matches param)
+// Use the same Supabase error handler helper (or define locally if preferred)
+function handleSupabaseError(error: PostgrestError, context: string): never {
+	console.error(`[Supabase Error - ${context}]`, error);
+	if (error.code === "PGRST116") {
+		// Not found or RLS issue
+		throw new NotFoundError(
+			`${context} failed: Resource not found or insufficient permissions.`,
+		);
+	}
+	throw new DatabaseError(`${context} failed`, error);
+}
 
 // GET /api/users/me - 現在のユーザー情報取得
 users.get("/me", async (c) => {
 	const userId = c.get("userId");
 	const supabase = getSupabaseClient(c);
 
-	// Fetch the profile from the 'profiles' table using the authenticated user ID
-	const { data, error } = await supabase
-		.from("profiles")
-		.select("*")
-		.eq("id", userId) // 'id' in profiles table should match auth.users.id
-		.single();
+	try {
+		const { data, error } = await supabase
+			.from("profiles")
+			.select("*")
+			.eq("id", userId)
+			.maybeSingle(); // Use maybeSingle
 
-	if (error) {
-		// Differentiate between profile not found (might be first login) and other errors
-		if (error.code === "PGRST116") {
-			console.log(
-				`Profile not found for user ${userId}, might be first login.`,
-			);
-			// Optional: Consider creating a profile entry here if it doesn't exist
-			// Or return a specific status/message indicating profile needs creation/setup
-			return c.notFound(); // Or return a default/empty profile shape
+		if (error) {
+			handleSupabaseError(error, "Fetching user profile");
 		}
-		console.error("Error fetching user profile:", error);
-		return c.json(
-			{ error: "Failed to fetch user profile", details: error.message },
-			500,
+
+		if (!data) {
+			// Profile might genuinely not exist yet for a new user
+			console.log(
+				`Profile not found for user ${userId}, potential first login.`,
+			);
+			throw new NotFoundError(`Profile for user ${userId} not found`);
+		}
+
+		return c.json<Profile>(data);
+	} catch (err) {
+		if (err instanceof HttpError) throw err; // Re-throw known errors
+		console.error("[GET /users/me] Unexpected error:", err);
+		throw new InternalServerError(
+			"An unexpected error occurred while fetching the user profile.",
 		);
 	}
-
-	if (!data) {
-		// This case might occur if RLS prevents access but no error is thrown
-		return c.notFound();
-	}
-
-	return c.json<Profile>(data);
 });
 
 // PUT /api/users/me - ユーザー情報更新
@@ -65,44 +80,38 @@ users.put("/me", zValidator("json", profileUpdateSchema), async (c) => {
 	const validatedData: Partial<ProfileUpdate> = c.req.valid("json");
 	const supabase = getSupabaseClient(c);
 
-	// Ensure updated_at is set automatically
-	const profileToUpdate = {
-		...validatedData,
-		updated_at: new Date().toISOString(),
-	};
+	try {
+		const profileToUpdate = {
+			...validatedData,
+			updated_at: new Date().toISOString(),
+		};
 
-	// Update the profile in the 'profiles' table for the authenticated user
-	const { data, error } = await supabase
-		.from("profiles")
-		.update(profileToUpdate)
-		.eq("id", userId) // Update where id matches the authenticated user's ID
-		.select()
-		.single();
+		const { data, error } = await supabase
+			.from("profiles")
+			.update(profileToUpdate)
+			.eq("id", userId) // Update where id matches the authenticated user's ID
+			.select()
+			.maybeSingle(); // Use maybeSingle
 
-	if (error) {
-		// Handle cases where the profile might not exist or RLS prevents update
-		if (error.code === "PGRST116") {
-			console.warn(
-				`Profile update failed for user ${userId}. Profile not found or permission denied.`,
-			);
-			return c.notFound(); // Or c.json({ error: 'Profile not found or update forbidden' }, 404)
+		if (error) {
+			handleSupabaseError(error, "Updating user profile");
 		}
-		console.error("Error updating user profile:", error);
-		return c.json(
-			{ error: "Failed to update user profile", details: error.message },
-			500,
+
+		if (!data) {
+			// If update affects 0 rows (profile doesn't exist or RLS)
+			throw new NotFoundError(
+				`Profile for user ${userId} not found or update forbidden`,
+			);
+		}
+
+		return c.json<Profile>(data);
+	} catch (err) {
+		if (err instanceof HttpError) throw err; // Re-throw known errors
+		console.error("[PUT /users/me] Unexpected error:", err);
+		throw new InternalServerError(
+			"An unexpected error occurred while updating the user profile.",
 		);
 	}
-
-	if (!data) {
-		// If RLS prevents update without error
-		console.warn(
-			`Profile update operation for user ${userId} returned no data, likely due to RLS.`,
-		);
-		return c.notFound();
-	}
-
-	return c.json<Profile>(data);
 });
 
 export default users;

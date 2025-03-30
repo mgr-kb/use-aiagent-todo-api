@@ -2,6 +2,7 @@ import { createMiddleware } from "hono/factory";
 import { verify } from "hono/jwt"; // Import verify function
 import { getLocalToken } from "../mocks/getToken";
 import type { AppEnv } from "../index";
+import { UnauthorizedError, InternalServerError } from "../errors/httpErrors"; // Import custom errors
 
 export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 	const authHeader = c.req.header("Authorization");
@@ -9,14 +10,12 @@ export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 
 	if (!jwtSecret) {
 		console.error("JWT_SECRET environment variable not set");
-		return c.json(
-			{ error: "Internal Server Error - Auth configuration missing" },
-			500,
-		);
+		throw new InternalServerError("Auth configuration missing"); // Throw custom error
 	}
 
 	if (!authHeader || !authHeader.startsWith("Bearer ")) {
-		return c.json({ error: "Unauthorized - Missing or invalid token" }, 401);
+		// No need to log here, UnauthorizedError implies the reason
+		throw new UnauthorizedError("Missing or invalid Authorization header"); // Throw custom error
 	}
 
 	// FIXME: ローカル限定
@@ -30,12 +29,10 @@ export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 		// Ensure payload.sub exists and is a string before setting
 		const userId = payload?.sub; // Use optional chaining
 		if (typeof userId !== "string") {
-			// Check if sub is a string
-			console.warn("JWT payload `sub` claim is missing or not a string.");
-			return c.json(
-				{ error: "Unauthorized - Invalid token payload (sub)" },
-				401,
-			);
+			// No need to log here, UnauthorizedError implies the reason
+			throw new UnauthorizedError(
+				"Invalid token payload (sub claim missing or invalid)",
+			); // Throw custom error
 		}
 
 		// Set userId and optionally the full payload in context
@@ -45,28 +42,28 @@ export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 		// Proceed to the next middleware or route handler
 		await next();
 	} catch (error: unknown) {
-		// Use unknown instead of any
-		console.error("JWT verification failed:");
+		// Log the original error for debugging purposes
+		console.error("JWT verification failed:", error);
+		let errorMessage = "Token verification failed";
+		let errorToSend: UnauthorizedError;
 
-		// Type check the error before accessing properties
 		if (error instanceof Error) {
-			console.error("Error details:", error.message);
-			// Check specific error names for JWT errors from hono/jwt
 			if (error.name === "JwtTokenExpired") {
-				return c.json({ error: "Unauthorized - Token expired" }, 401);
-			}
-			if (
+				errorMessage = "Token expired";
+			} else if (
 				error.name === "JwtTokenInvalid" ||
 				error.name === "JwtTokenSignatureMismatched"
 			) {
-				return c.json({ error: "Unauthorized - Invalid token" }, 401);
+				errorMessage = "Invalid token";
 			}
+			// Use the specific error message if available
+			errorToSend = new UnauthorizedError(errorMessage);
 		} else {
-			// Handle non-Error exceptions if necessary
-			console.error("Caught non-Error exception:", error);
+			// Handle non-Error exceptions
+			errorToSend = new UnauthorizedError(
+				"Token verification failed due to unexpected error",
+			);
 		}
-
-		// Generic fallback for other errors or non-Errors
-		return c.json({ error: "Unauthorized - Token verification failed" }, 401);
+		throw errorToSend; // Throw the custom UnauthorizedError
 	}
 });
