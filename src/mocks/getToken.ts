@@ -44,7 +44,6 @@ export async function getToken(c: HonoContext<AppEnv>) {
 			// console.log('User ID (sub):', payload.sub);
 		}
 		console.error("Sign-in succeeded but no session/token found.");
-		console.log("Response data:", data);
 	} catch (e) {
 		console.error("An unexpected error occurred:", e);
 	}

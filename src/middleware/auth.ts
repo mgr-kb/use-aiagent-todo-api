@@ -30,7 +30,6 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 	}
 
 	if (!authHeader || !authHeader.startsWith("Bearer ")) {
-		console.log("Authorization header missing or invalid");
 		return c.json({ error: "Unauthorized - Missing or invalid token" }, 401);
 	}
 
@@ -56,7 +55,7 @@ export const authMiddleware = createMiddleware<AuthEnv>(async (c, next) => {
 			);
 		}
 
-		console.log(`User authenticated: ${userId}`);
+		console.log("User authenticated.");
 
 		// Set userId and optionally the full payload in context
 		c.set("userId", userId);

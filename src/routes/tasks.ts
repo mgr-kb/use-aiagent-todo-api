@@ -27,10 +27,8 @@ tasks.get("/", async (c) => {
 	const { data, error } = await supabase
 		.from("tasks")
 		.select("*")
-		.eq("user_id", "9316e824-ba86-47f3-bd58-cbe2b666c842") // Filter by authenticated user
+		.eq("user_id", userId) // Filter by authenticated user
 		.order("created_at", { ascending: false }); // Example ordering
-
-	console.log("data: ", data);
 
 	if (error) {
 		console.error("Error fetching tasks:", error);
