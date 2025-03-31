@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import xss from "xss"; // Import the xss library
 import type { AppEnv } from "../types/hono";
 import { taskService } from "../services/taskService";
 import type { Task, TaskUpdate } from "../models";
@@ -10,8 +11,15 @@ const tasks = new Hono<AppEnv>();
 // Reuse or redefine Zod schemas here
 const taskSchema = z.object({
 	// id is excluded as it's generated or from path param
-	title: z.string().min(1, { message: "Title cannot be empty" }),
-	description: z.string().optional().nullable(),
+	title: z
+		.string()
+		.min(1, { message: "Title cannot be empty" })
+		.transform((val) => xss(val)), // Sanitize title
+	description: z
+		.string()
+		.optional()
+		.nullable()
+		.transform((val) => (val ? xss(val) : val)), // Sanitize description if present
 	status: z.enum(["todo", "inprogress", "done"]).default("todo"),
 	priority: z.enum(["low", "medium", "high"]).default("medium"),
 	due_date: z.string().datetime({ offset: true }).optional().nullable(),

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import xss from "xss"; // Import the xss library
 import type { AppEnv } from "../types/hono";
 import { profileService } from "../services/profileService";
 import type { Profile, ProfileUpdate } from "../models";
@@ -9,7 +10,11 @@ import { BadRequestError } from "../utils/error"; // Import BadRequestError
 // Reuse or redefine Zod schemas
 const profileSchema = z.object({
 	// id and email are usually not updated by the user directly
-	name: z.string().optional().nullable(),
+	name: z
+		.string()
+		.optional()
+		.nullable()
+		.transform((val) => (val ? xss(val) : val)), // Sanitize name if present
 	avatar_url: z.string().url().optional().nullable(),
 	// created_at, updated_at are handled by service/DB
 });
