@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger"; // Import logger middleware
+import { cors } from "hono/cors"; // Import CORS middleware
 import tasksRouter from "./routes/tasks"; // Value import needed for app.route
 import usersRouter from "./routes/users"; // Value import needed for app.route
 import { authMiddleware } from "./middleware/auth"; // Placeholder for auth middleware
@@ -12,7 +13,20 @@ const app = new Hono<AppEnv>().basePath("/api"); // Apply the Env type
 // Apply logger middleware FIRST
 app.use("*", logger());
 
-// Apply auth middleware AFTER logger (so logger sees the request before auth potentially stops it)
+// Apply CORS middleware with secure defaults
+app.use(
+	"*",
+	cors({
+		origin: ["http://localhost:3000", "https://TODO"], // FIXME: 本番環境のドメインを設定する
+		allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+		allowHeaders: ["Content-Type", "Authorization"],
+		exposeHeaders: ["Content-Length", "X-Kuma-Revision"],
+		maxAge: 600,
+		credentials: true,
+	}),
+);
+
+// Apply auth middleware AFTER logger and CORS
 app.use("*", authMiddleware);
 
 // Route definitions
